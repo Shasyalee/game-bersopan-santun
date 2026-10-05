@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bersopan Santun - Ular Makan Telur</title>
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:Arial,Helvetica,sans-serif;
+    background:linear-gradient(135deg,#dff7ff,#fff5d9);
+    color:#17324d; min-height:100vh; display:flex; justify-content:center; align-items:center;
+  }
+  .app{width:min(920px,96vw); padding:18px}
+  .card{
+    background:#fff; border-radius:24px; padding:22px;
+    box-shadow:0 12px 35px rgba(0,0,0,.12);
+  }
+  h1{margin:0;text-align:center;color:#168b67;font-size:clamp(28px,6vw,46px)}
+  .subtitle{text-align:center;margin:6px 0 18px;font-size:18px}
+  .screen{display:none}.screen.active{display:block}
+  input{
+    width:100%; padding:15px 16px; border:3px solid #b8dfd0; border-radius:14px;
+    font-size:18px; outline:none; margin:8px 0 14px;
+  }
+  input:focus{border-color:#168b67}
+  button{
+    border:0;border-radius:14px;padding:13px 18px;font-size:17px;font-weight:700;
+    cursor:pointer; background:#168b67;color:white; box-shadow:0 4px 0 #0c6349;
+    touch-action:manipulation;
+  }
+  button:active{transform:translateY(3px);box-shadow:0 1px 0 #0c6349}
+  .start{text-align:center}
+  .start .hint{background:#fff8df;border-radius:15px;padding:12px;margin:12px 0 18px}
+  .game-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-weight:700}
+  .badge{background:#e8f7f1;padding:8px 12px;border-radius:999px}
+  canvas{display:block;width:100%;max-width:600px;aspect-ratio:1/1;margin:0 auto;border-radius:16px;background:#f4f0df;border:5px solid #365c49;image-rendering:pixelated}
+  .controls{max-width:310px;margin:16px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .controls button{height:58px;font-size:24px;background:#355c49}
+  .controls .blank{visibility:hidden}
+  .instructions{text-align:center;font-size:14px;margin:12px 0 0;color:#566}
+  .quiz{text-align:center}
+  .question-no{font-weight:700;color:#168b67}
+  .question-box{background:#f1fbf7;border-radius:18px;padding:18px;margin:12px 0 16px;font-size:21px;font-weight:700}
+  .options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .opt{background:#fff;border:3px solid #cce7dd;color:#17324d;box-shadow:none;min-height:70px}
+  .opt:hover{background:#f4fcf8}
+  .feedback{margin-top:15px;padding:12px;border-radius:14px;font-weight:700;display:none}
+  .feedback.good{background:#e5f8ed;color:#14683f}.feedback.bad{background:#fff0ed;color:#a13d2d}
+  .next{margin-top:12px;display:none}
+  .result{text-align:center}
+  .score{font-size:64px;font-weight:900;color:#168b67;margin:8px 0}
+  .result-box{background:#f1fbf7;border-radius:18px;padding:18px;margin:16px 0}
+  .small{font-size:14px;color:#667}
+  @media(max-width:600px){.options{grid-template-columns:1fr}.card{padding:16px}.game-top{font-size:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="card">
+  <div id="startScreen" class="screen active start">
+    <h1>🐍 Bersopan Santun 🥚</h1>
+    <div class="subtitle">Game Ular Makan Telur • Amalan Bersopan Santun • Tahun 1</div>
+    <audio id="bgMusic" src="Lagu Bersopan Santun.mp3" loop preload="auto"></audio>
+    <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px">
+      <button type="button" onclick="toggleMusic()" id="musicBtn" style="background:#e9a93a;box-shadow:0 4px 0 #b77b16">🔊 Muzik: ON</button>
+    </div>
+    <div class="hint">🎮 Gerakkan ular menggunakan butang arah. Makan telur untuk membuka soalan!</div>
+    <label for="name"><b>Nama murid</b></label>
+    <input id="name" maxlength="30" placeholder="Taip nama kamu di sini..." autocomplete="off">
+    <button onclick="startGame()">MULA</button>
+  </div>
+
+  <div id="gameScreen" class="screen">
+    <div class="game-top">
+      <span class="badge">👤 <span id="playerName"></span></span>
+      <span class="badge">Soalan <span id="qCount">1</span>/10</span>
+      <span class="badge">⭐ <span id="score">0</span>/20</span>
+      <button type="button" onclick="toggleMusic()" id="gameMusicBtn" style="padding:8px 12px;font-size:14px;background:#e9a93a;box-shadow:0 3px 0 #b77b16">🔊</button>
+    </div>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <div class="controls">
+      <span class="blank"></span><button onclick="setDir(0,-1)">▲</button><span class="blank"></span>
+      <button onclick="setDir(-1,0)">◀</button><button onclick="setDir(0,1)">▼</button><button onclick="setDir(1,0)">▶</button>
+    </div>
+    <div class="instructions">Tip: Kamu juga boleh guna kekunci anak panah pada papan kekunci.</div>
+  </div>
+
+  <div id="quizScreen" class="screen quiz">
+    <h1 style="font-size:32px">🐍 Telur Dimakan!</h1>
+    <div class="question-no">Soalan <span id="quizNo"></span> daripada 10</div>
+    <div class="question-box">Yang manakah merupakan amalan bersopan santun?</div>
+    <div id="options" class="options"></div>
+    <div id="feedback" class="feedback"></div>
+    <button id="nextBtn" class="next" onclick="continueGame()">TERUSKAN</button>
+  </div>
+
+  <div id="resultScreen" class="screen result">
+    <h1>🎉 Tahniah!</h1>
+    <div class="subtitle" id="resultMessage"></div>
+    <div class="result-box">
+      <div>Markah kamu</div>
+      <div class="score"><span id="finalScore">0</span>/20</div>
+      <div id="finalRemark"></div>
+    </div>
+    <button onclick="location.reload()">MAIN SEMULA</button>
+  </div>
+</div>
+</div>
+
+<script>
+const questions = [
+  {
+    options:[
+      "Kita perlu tutup hidung dan mulut ketika bersin.",
+      "Kita boleh batuk di hadapan orang.",
+      "Kita bercakap dengan kuat di hadapan orang."
+    ], answer:0
+  },
+  {
+    options:[
+      "Ahmad menutup mulut apabila menguap.",
+      "Ahmad pecahkan pasu ibu.",
+      "Ahmad membuang sampah di merata-rata tempat."
+    ], answer:0
+  },
+  {
+    options:[
+      "Bersalaman merupakan amalan yang baik.",
+      "Sepak kucing merupakan amalan yang baik.",
+      "Kita menolak kawan ketika beratur."
+    ], answer:0
+  },
+  {
+    options:[
+      "Duduk bersila semasa makan.",
+      "Berdiri tegak semasa makan.",
+      "Kita bermain dengan makanan ketika makan."
+    ], answer:0
+  },
+  {
+    options:[
+      "Kita mengucapkan terima kasih apabila menerima sesuatu.",
+      "Kita mengambil barang orang tanpa izin.",
+      "Kita mengejek kawan apabila mereka bercakap."
+    ], answer:0
+  },
+  {
+    options:[
+      "Kita memberi salam apabila bertemu guru.",
+      "Kita memotong percakapan orang lain.",
+      "Kita menjerit kepada kawan."
+    ], answer:0
+  },
+  {
+    options:[
+      "Kita meminta maaf apabila melakukan kesalahan.",
+      "Kita mentertawakan kawan yang terjatuh.",
+      "Kita mengambil makanan kawan tanpa izin."
+    ], answer:0
+  },
+  {
+    options:[
+      "Kita bercakap dengan suara yang lembut.",
+      "Kita menjerit ketika bercakap dengan guru.",
+      "Kita mengganggu kawan semasa belajar."
+    ], answer:0
+  },
+  {
+    options:[
+      "Kita berkongsi barang dengan kawan.",
+      "Kita berebut barang dengan kawan.",
+      "Kita menyembunyikan barang milik kawan."
+    ], answer:0
+  },
+  {
+    options:[
+      "Kita beratur dengan tertib ketika membeli makanan.",
+      "Kita memotong barisan orang lain.",
+      "Kita menolak kawan ketika beratur."
+    ], answer:0
+  }
+];
+
+let canvas,ctx,grid=20,cell=30;
+let snake,dir,nextDir,egg,gameTimer,questionIndex=0,score=0;
+let gamePaused=false,answered=false;
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function startGame(){
+  const music=document.getElementById('bgMusic');
+  if(music && music.paused) music.play().catch(()=>{});
+  const n=document.getElementById('name').value.trim();
+  if(!n){alert("Sila taip nama dahulu 😊");return;}
+  document.getElementById('playerName').textContent=n;
+  canvas=document.getElementById('gameCanvas');ctx=canvas.getContext('2d');
+  snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir={x:1,y:0};nextDir={x:1,y:0};
+  placeEgg();
+  show('gameScreen');
+  draw();
+  clearInterval(gameTimer);gameTimer=setInterval(tick,130);
+}
+function setDir(x,y){
+  if(gamePaused)return;
+  if(x===-dir.x && y===-dir.y)return;
+  nextDir={x,y};
+}
+document.addEventListener('keydown',e=>{
+  const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};
+  if(m[e.key]){e.preventDefault();setDir(...m[e.key]);}
+});
+function placeEgg(){
+  do{egg={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)}}
+  while(snake.some(p=>p.x===egg.x&&p.y===egg.y));
+}
+function tick(){
+  if(gamePaused)return;
+  dir=nextDir;
+  const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+  if(head.x<0||head.x>=20||head.y<0||head.y>=20||snake.some(p=>p.x===head.x&&p.y===head.y)){
+    snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];dir={x:1,y:0};nextDir={x:1,y:0};placeEgg();draw();return;
+  }
+  snake.unshift(head);
+  if(head.x===egg.x&&head.y===egg.y){
+    gamePaused=true;clearInterval(gameTimer);draw();setTimeout(showQuiz,250);
+  }else{snake.pop();draw();}
+}
+function draw(){
+  ctx.fillStyle='#f4f0df';ctx.fillRect(0,0,600,600);
+  ctx.strokeStyle='rgba(54,92,73,.10)';ctx.lineWidth=1;
+  for(let i=0;i<=20;i++){ctx.beginPath();ctx.moveTo(i*30,0);ctx.lineTo(i*30,600);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*30);ctx.lineTo(600,i*30);ctx.stroke();}
+  // egg
+  ctx.font='25px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🥚',egg.x*30+15,egg.y*30+15);
+  snake.forEach((p,i)=>{
+    ctx.fillStyle=i===0?'#168b67':'#39a978';
+    ctx.fillRect(p.x*30+3,p.y*30+3,24,24);
+    if(i===0){
+      ctx.fillStyle='white';ctx.beginPath();ctx.arc(p.x*30+10,p.y*30+10,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(p.x*30+20,p.y*30+10,3,0,Math.PI*2);ctx.fill();
+    }
+  });
+}
+function shuffleOptions(q){
+  const items=q.options.map((text,i)=>({text,correct:i===q.answer}));
+  for(let i=items.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [items[i],items[j]]=[items[j],items[i]];
+  }
+  return items;
+}
+function showQuiz(){
+  document.getElementById('quizNo').textContent=questionIndex+1;
+  document.getElementById('qCount').textContent=questionIndex+1;
+  const box=document.getElementById('options');box.innerHTML='';
+  document.getElementById('feedback').style.display='none';
+  document.getElementById('nextBtn').style.display='none';
+  answered=false;
+  const shuffled=shuffleOptions(questions[questionIndex]);
+  shuffled.forEach((item,i)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    b.textContent=item.text;
+    b.dataset.correct=item.correct ? '1':'0';
+    b.onclick=()=>answer(i);
+    box.appendChild(b);
+  });
+  show('quizScreen');
+}
+function answer(i){
+  if(answered)return; answered=true;
+  const chosen=document.querySelectorAll('.opt')[i];
+  const fb=document.getElementById('feedback');
+  if(chosen.dataset.correct==='1'){
+    score+=2;
+    document.getElementById('score').textContent=score;
+    fb.textContent='Bagus! 🎉 Itu ialah amalan bersopan santun.';
+    fb.className='feedback good';
+  }else{
+    fb.textContent='Cuba lagi pada soalan seterusnya. Pilih ayat yang menunjukkan amalan bersopan santun.';
+    fb.className='feedback bad';
+  }
+  fb.style.display='block';
+  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+  document.getElementById('nextBtn').style.display='inline-block';
+}
+function continueGame(){
+  questionIndex++;
+  if(questionIndex>=questions.length){finishGame();return;}
+  snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];dir={x:1,y:0};nextDir={x:1,y:0};placeEgg();
+  document.getElementById('qCount').textContent=questionIndex+1;
+  show('gameScreen');gamePaused=false;draw();clearInterval(gameTimer);gameTimer=setInterval(tick,130);
+}
+function finishGame(){
+  document.getElementById('finalScore').textContent=score;
+  document.getElementById('resultMessage').textContent='Syabas, '+document.getElementById('playerName').textContent+'!';
+  let r=score===20?'Cemerlang! Kamu sangat menguasai amalan bersopan santun. 🌟':
+        score>=12?'Bagus! Teruskan mengamalkan sikap bersopan santun. 👍':
+        'Jangan berputus asa. Mari belajar dan amalkan sikap bersopan santun lagi! 💪';
+  document.getElementById('finalRemark').textContent=r;
+  show('resultScreen');
+}
+
+let musicOn=true;
+function toggleMusic(){
+  const music=document.getElementById('bgMusic');
+  if(!music) return;
+  if(music.paused){
+    music.play().then(()=>{
+      musicOn=true;
+      document.getElementById('musicBtn').textContent='🔊 Muzik: ON';
+      const gb=document.getElementById('gameMusicBtn'); if(gb) gb.textContent='🔊';
+    }).catch(()=>{});
+  }else{
+    music.pause();
+    musicOn=false;
+    document.getElementById('musicBtn').textContent='🔇 Muzik: OFF';
+    const gb=document.getElementById('gameMusicBtn'); if(gb) gb.textContent='🔇';
+  }
+}
+
+</script>
+</body>
+</html>
